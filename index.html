@@ -1,0 +1,101 @@
+<html>
+
+<head>
+    <title>A D3 map</title>
+    <script src='https://d3js.org/d3.v4.min.js'></script>
+    <script src='neighborhoods.js'></script>
+    <script src="points.js"></script>
+</head>
+
+<body>
+    <script>
+        var s = [];
+        var width = 700,
+            height = 580;
+
+        var svg = d3.select('body')
+            .append('svg')
+            .attr('width', width)
+            .attr('height', height);
+
+        var g = svg.append('g');
+
+        var albersProjection = d3.geoAlbers()
+            .scale(190000)
+            .rotate([71.057, 0])
+            .center([0, 42.313])
+            .translate([width / 2, height / 2]);
+
+        var geoPath = d3.geoPath()
+            .projection(albersProjection);
+
+        g.selectAll('path')
+            .data(neighborhoods_json.features)
+            .enter()
+            .append('path')
+            .attr('fill', '#ccc')
+            .attr('d', geoPath);
+
+        var rodents = svg.append('g');
+
+        rodents.selectAll('path')
+            .data(points_json.features)
+            .enter()
+            .append('path')
+            .attr('fill', '#900')
+            .attr('stroke', '#999')
+            .attr('d', geoPath)
+            .on('click', function () {
+                d3.select(this)
+                    .attr('opacity', 1)
+                    .transition()
+                    .duration(1000)
+                    .attr('x', width * Math.round(Math.random()))
+                    .attr('y', height * Math.round(Math.random()))
+                    .attr('opacity', 0)
+                    .on('end', function () {
+                        d3.select(this).remove();
+                    });
+            });
+
+        // looping through the points to get the start and end points of the lines
+        for (let a = 0; a < points_json.features.length - 1; a++) {
+            // getting the coordinates of start and end point
+            const r = albersProjection(points_json.features[a].geometry.coordinates), n = albersProjection(points_json.features[a + 1].geometry.coordinates);
+            // putting the points into an array
+            s.push({ type: "LineString", coordinates: [[r[0], r[1]], [n[0], n[1]]] })
+        }
+        const r = svg.append("g");
+
+        // drawing the lines
+        r.selectAll("line")
+            .data(s) // getting the points from the array
+            .enter()
+            .append("line") 
+            // placing a line with the start and end points from the array
+            .attr("x1", t => t.coordinates[0][0])
+            .attr("y1", t => t.coordinates[0][1])
+            .attr("x2", t => t.coordinates[1][0])
+            .attr("y2", t => t.coordinates[1][1])
+            .attr("id", function (t, e) { return "line" + e })
+            // styling the lines
+            .attr("stroke", "steelblue"), r.selectAll("line")
+                .style("opacity", 0), d3.selectAll("line")
+                    .style("opacity", "1"), d3.selectAll("line")
+                        .each(function (t, e) { // animating the lines
+                            let a = d3.select("#line" + e).node().getTotalLength();
+                            d3.select("#line" + e)
+                                .attr("stroke-dasharray", a + " " + a)
+                                .attr("stroke-dashoffset", a)
+                                .transition()
+                                .duration(500)
+                                .delay(220 * e)
+                                .ease(d3.easeLinear)
+                                .attr("stroke-dashoffset", 0)
+                                .style("stroke-width", 3)
+                        });
+
+    </script>
+</body>
+
+</html>
